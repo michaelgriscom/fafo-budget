@@ -200,40 +200,50 @@ export async function reconcile(config: Config): Promise<void> {
   }
 
   // Step 3: Update source month's Flex budgets to match actual spending,
-  // then copy the corrected values to the target month.
+  // then copy the values to the target month.
+  // Categories with carryover enabled keep their budget as-is (unspent amounts accumulate).
   const sourceFlexGroup = findGroup(sourceGroups, 'Flex')!;
   let flexTotal = 0;
 
   for (const sourceCat of sourceFlexGroup.categories) {
-    // spent is negative in Actual (money going out), so we use abs value
-    const correctedBudget = Math.abs(sourceCat.spent);
-    flexTotal += correctedBudget;
+    let newBudget: number;
 
-    // Correct the source month's flex budget to match actuals
-    if (sourceCat.budgeted !== correctedBudget) {
-      logger.info(`Flex (${window.sourceMonth}): "${sourceCat.name}"`, {
-        from: sourceCat.budgeted / 100,
-        to: correctedBudget / 100,
-        spent: sourceCat.spent / 100,
-      });
-      await setBudget(config.fafo.dryRun, window.sourceMonth, sourceCat.id, correctedBudget);
+    if (sourceCat.carryover) {
+      // Carryover enabled — keep the existing budget so unspent amounts accumulate
+      newBudget = sourceCat.budgeted;
+      logger.info(`Flex: "${sourceCat.name}" has carryover, keeping budget at ${newBudget / 100}`);
+    } else {
+      // No carryover — correct source month budget to match actual spending
+      // (spent is negative in Actual, so we use abs value)
+      newBudget = Math.abs(sourceCat.spent);
+
+      if (sourceCat.budgeted !== newBudget) {
+        logger.info(`Flex (${window.sourceMonth}): "${sourceCat.name}"`, {
+          from: sourceCat.budgeted / 100,
+          to: newBudget / 100,
+          spent: sourceCat.spent / 100,
+        });
+        await setBudget(config.fafo.dryRun, window.sourceMonth, sourceCat.id, newBudget);
+      }
     }
 
-    // Copy corrected value to target month
+    flexTotal += newBudget;
+
+    // Copy value to target month
     const targetCat = findGroup(targetGroups, 'Flex')!.categories.find((c) => c.id === sourceCat.id);
     if (!targetCat) {
       logger.warn(`Flex category "${sourceCat.name}" not found in target month, skipping`);
       continue;
     }
 
-    if (targetCat.budgeted !== correctedBudget) {
+    if (targetCat.budgeted !== newBudget) {
       logger.info(`Flex (${window.targetMonth}): "${sourceCat.name}"`, {
         from: targetCat.budgeted / 100,
-        to: correctedBudget / 100,
+        to: newBudget / 100,
       });
-      await setBudget(config.fafo.dryRun, window.targetMonth, sourceCat.id, correctedBudget);
+      await setBudget(config.fafo.dryRun, window.targetMonth, sourceCat.id, newBudget);
     } else {
-      logger.info(`Flex: "${sourceCat.name}" unchanged at ${correctedBudget / 100}`);
+      logger.info(`Flex: "${sourceCat.name}" unchanged at ${newBudget / 100}`);
     }
   }
 
