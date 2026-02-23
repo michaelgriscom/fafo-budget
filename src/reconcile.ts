@@ -199,30 +199,41 @@ export async function reconcile(config: Config): Promise<void> {
     }
   }
 
-  // Step 3: Set Flex budgets to source month's actual spending
+  // Step 3: Update source month's Flex budgets to match actual spending,
+  // then copy the corrected values to the target month.
   const sourceFlexGroup = findGroup(sourceGroups, 'Flex')!;
   let flexTotal = 0;
 
   for (const sourceCat of sourceFlexGroup.categories) {
     // spent is negative in Actual (money going out), so we use abs value
-    const newBudget = Math.abs(sourceCat.spent);
-    flexTotal += newBudget;
+    const correctedBudget = Math.abs(sourceCat.spent);
+    flexTotal += correctedBudget;
 
+    // Correct the source month's flex budget to match actuals
+    if (sourceCat.budgeted !== correctedBudget) {
+      logger.info(`Flex (${window.sourceMonth}): "${sourceCat.name}"`, {
+        from: sourceCat.budgeted / 100,
+        to: correctedBudget / 100,
+        spent: sourceCat.spent / 100,
+      });
+      await setBudget(config.fafo.dryRun, window.sourceMonth, sourceCat.id, correctedBudget);
+    }
+
+    // Copy corrected value to target month
     const targetCat = findGroup(targetGroups, 'Flex')!.categories.find((c) => c.id === sourceCat.id);
     if (!targetCat) {
       logger.warn(`Flex category "${sourceCat.name}" not found in target month, skipping`);
       continue;
     }
 
-    if (targetCat.budgeted !== newBudget) {
-      logger.info(`Flex: "${sourceCat.name}"`, {
+    if (targetCat.budgeted !== correctedBudget) {
+      logger.info(`Flex (${window.targetMonth}): "${sourceCat.name}"`, {
         from: targetCat.budgeted / 100,
-        to: newBudget / 100,
-        sourceSpent: sourceCat.spent / 100,
+        to: correctedBudget / 100,
       });
-      await setBudget(config.fafo.dryRun, window.targetMonth, sourceCat.id, newBudget);
+      await setBudget(config.fafo.dryRun, window.targetMonth, sourceCat.id, correctedBudget);
     } else {
-      logger.info(`Flex: "${sourceCat.name}" unchanged at ${newBudget / 100}`);
+      logger.info(`Flex: "${sourceCat.name}" unchanged at ${correctedBudget / 100}`);
     }
   }
 

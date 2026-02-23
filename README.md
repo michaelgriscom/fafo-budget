@@ -6,11 +6,11 @@ Automated [FAFO budget](https://michaelgris.com/posts/fafo-budget/) reconciliati
 
 Each month, the FAFO system requires reconciliation:
 
-1. **Flex** budgets are set to last month's actual spending
-2. **Other** is calculated as `Target - Fixed - Flex - Allowances`
-3. **Fixed** and **Allowances** budgets are left as-is (set by you)
+1. **Flex** budgets for the prior month are corrected to match actual spending
+2. **Fixed**, **Flex**, and **Allowances** budgets are copied to the new month
+3. **Other** is calculated as `Target - Fixed - Flex - Allowances` for the new month
 
-This container automates steps 1 and 2, running daily during a configurable reconciliation window around month-end.
+This container automates the reconciliation, running daily during a configurable window around month-end. As late transactions land, each run re-corrects the numbers.
 
 ## Requirements
 
@@ -40,12 +40,9 @@ Your Actual Budget categories must be organized into four category groups:
 
 With default settings (`start=28`, `end=5`):
 
-- **Jan 28–31**: Sets February budgets based on January spending so far
-- **Feb 1–5**: Continues updating February budgets as remaining January transactions clear
+- **Jan 28–Feb 5**: Corrects January's Flex budgets to match actual spending, copies all budgets to February, and calculates February's Other amount. Runs daily so late-landing transactions are picked up.
 - **Feb 6–27**: No reconciliation (outside window)
-- **Feb 28**: Starts setting March budgets
-
-Running daily within the window means budgets converge on correct values as late transactions land.
+- **Feb 28–Mar 5**: Same process for February → March
 
 ## Docker Compose
 
