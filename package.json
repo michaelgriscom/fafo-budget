@@ -1,0 +1,22 @@
+{
+  "name": "fafo-budget",
+  "version": "1.0.0",
+  "description": "Automated FAFO budget reconciliation for Actual Budget",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "dev": "tsx src/index.ts"
+  },
+  "keywords": ["actual-budget", "fafo", "budgeting", "automation"],
+  "license": "MIT",
+  "dependencies": {
+    "@actual-app/api": "^26.2.0",
+    "node-cron": "^3.0.3"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "@types/node-cron": "^3.0.11",
+    "typescript": "^5.7.0"
+  }
+}
