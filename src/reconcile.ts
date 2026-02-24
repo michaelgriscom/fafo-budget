@@ -250,22 +250,39 @@ export async function reconcile(config: Config): Promise<void> {
     });
   }
 
-  // Step 5: Assign Other budget to the catch-all category
-  const targetOtherGroup = findGroup(targetGroups, 'Other')!;
-  const otherCategory = findOtherCategory(targetOtherGroup, config.fafo.otherCategory);
+  // Step 5: Assign Other budget to the catch-all category in both months
+  const sourceOtherGroup = findGroup(sourceGroups, 'Other')!;
+  const sourceOtherCategory = findOtherCategory(sourceOtherGroup, config.fafo.otherCategory);
 
-  if (!otherCategory) {
+  if (!sourceOtherCategory) {
     throw new Error('No categories found in the Other group');
   }
 
-  if (otherCategory.budgeted !== otherBudget) {
-    logger.info(`Other: "${otherCategory.name}"`, {
-      from: otherCategory.budgeted / 100,
+  if (sourceOtherCategory.budgeted !== otherBudget) {
+    logger.info(`Other (${window.sourceMonth}): "${sourceOtherCategory.name}"`, {
+      from: sourceOtherCategory.budgeted / 100,
       to: otherBudget / 100,
     });
-    await setBudget(config.fafo.dryRun, window.targetMonth, otherCategory.id, otherBudget);
+    await setBudget(config.fafo.dryRun, window.sourceMonth, sourceOtherCategory.id, otherBudget);
   } else {
-    logger.info(`Other: "${otherCategory.name}" unchanged at ${otherBudget / 100}`);
+    logger.info(`Other (${window.sourceMonth}): "${sourceOtherCategory.name}" unchanged at ${otherBudget / 100}`);
+  }
+
+  const targetOtherGroup = findGroup(targetGroups, 'Other')!;
+  const targetOtherCategory = findOtherCategory(targetOtherGroup, config.fafo.otherCategory);
+
+  if (!targetOtherCategory) {
+    throw new Error('No categories found in the Other group in target month');
+  }
+
+  if (targetOtherCategory.budgeted !== otherBudget) {
+    logger.info(`Other (${window.targetMonth}): "${targetOtherCategory.name}"`, {
+      from: targetOtherCategory.budgeted / 100,
+      to: otherBudget / 100,
+    });
+    await setBudget(config.fafo.dryRun, window.targetMonth, targetOtherCategory.id, otherBudget);
+  } else {
+    logger.info(`Other (${window.targetMonth}): "${targetOtherCategory.name}" unchanged at ${otherBudget / 100}`);
   }
 
   // Sync changes
