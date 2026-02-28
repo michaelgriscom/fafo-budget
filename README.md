@@ -34,6 +34,7 @@ Your Actual Budget categories must be organized into four category groups:
 | `FAFO_RECON_TIME` | No | `02:00` | Time of day to run (HH:MM, 24hr) |
 | `TZ` | No | `UTC` | Timezone |
 | `FAFO_OTHER_CATEGORY` | No | *(first in group)* | Name of the catch-all category in the Other group |
+| `FAFO_BANK_SYNC` | No | `false` | Sync linked bank accounts before reconciliation |
 | `FAFO_DRY_RUN` | No | `false` | Log changes without applying them |
 | `FAFO_HEALTH_PORT` | No | `8080` | Port for the health check HTTP endpoint |
 
