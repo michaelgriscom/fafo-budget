@@ -41,7 +41,7 @@ Your Actual Budget categories must be organized into four category groups:
 
 With default settings (`start=28`, `end=5`):
 
-- **Jan 28–Feb 5**: Corrects January's Flex budgets to match actual spending, copies all budgets to February, and calculates February's Other amount. Runs daily so late-landing transactions are picked up.
+- **Jan 28–Feb 5**: Corrects January's Flex budgets to match actual spending and updates Other per the aforementioned calculation. Copies the budget values over to February. The runs in February are intended to catch end-of-month transactions that take additional days to clear.
 - **Feb 6–27**: No reconciliation (outside window)
 - **Feb 28–Mar 5**: Same process for February → March
 
