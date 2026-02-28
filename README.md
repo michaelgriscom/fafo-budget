@@ -50,7 +50,7 @@ With default settings (`start=28`, `end=5`):
 ```yaml
 fafo_budget:
   container_name: fafo_budget
-  image: ghcr.io/yourusername/fafo-budget:latest
+  image: ghcr.io/michaelgriscom/fafo-budget:latest
   restart: unless-stopped
   depends_on:
     actual_budget:
