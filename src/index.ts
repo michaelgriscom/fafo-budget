@@ -1,18 +1,23 @@
 import http from 'node:http';
 import cron from 'node-cron';
 import { loadConfig } from './config';
-import { connect, disconnect } from './actual';
+import { connect, disconnect, runBankSync } from './actual';
 import { reconcile } from './reconcile';
 import { logger } from './logger';
 
-async function runReconciliation(): Promise<void> {
+async function runScheduledJob(): Promise<void> {
   const config = loadConfig();
   try {
     await connect(config);
+
+    if (config.fafo.bankSync) {
+      await runBankSync();
+    }
+
     await reconcile(config);
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
-    logger.error('Reconciliation failed', { error: message });
+    logger.error('Scheduled job failed', { error: message });
   } finally {
     await disconnect();
   }
@@ -30,14 +35,15 @@ async function main(): Promise<void> {
     cronExpr,
     dryRun: config.fafo.dryRun,
     monthlyTarget: config.fafo.monthlyTarget,
+    bankSync: config.fafo.bankSync,
   });
 
   // Run once on startup
-  await runReconciliation();
+  await runScheduledJob();
 
   // Schedule daily
   cron.schedule(cronExpr, () => {
-    runReconciliation();
+    runScheduledJob();
   });
 
   logger.info(`Scheduler active — next run at ${config.fafo.reconTime} daily`);
