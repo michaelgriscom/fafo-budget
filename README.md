@@ -35,6 +35,7 @@ Your Actual Budget categories must be organized into four category groups:
 | `TZ` | No | `UTC` | Timezone |
 | `FAFO_OTHER_CATEGORY` | No | *(first in group)* | Name of the catch-all category in the Other group |
 | `FAFO_DRY_RUN` | No | `false` | Log changes without applying them |
+| `FAFO_HEALTH_PORT` | No | `8080` | Port for the health check HTTP endpoint |
 
 ## How the reconciliation window works
 
@@ -62,6 +63,12 @@ fafo_budget:
     - ACTUAL_SYNC_ID=your-sync-id
     - FAFO_MONTHLY_TARGET=5000
 ```
+
+## Monitoring
+
+The container exposes an HTTP health check endpoint on port 8080 (configurable via `FAFO_HEALTH_PORT`). Any request returns `200 OK`.
+
+The Dockerfile includes a `HEALTHCHECK` instruction, so Docker will automatically report container health. For external monitoring (e.g. Uptime Kuma), point an HTTP monitor at `http://fafo_budget:8080`.
 
 ## Development
 

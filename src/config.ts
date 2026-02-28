@@ -11,6 +11,7 @@ export interface Config {
     reconTime: string;
     otherCategory: string | null;
     dryRun: boolean;
+    healthPort: number;
   };
 }
 
@@ -66,6 +67,7 @@ export function loadConfig(): Config {
       reconTime,
       otherCategory: process.env['FAFO_OTHER_CATEGORY'] || null,
       dryRun: process.env['FAFO_DRY_RUN'] === 'true',
+      healthPort: optionalInt('FAFO_HEALTH_PORT', 8080),
     },
   };
 }

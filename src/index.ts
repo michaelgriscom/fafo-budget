@@ -1,3 +1,4 @@
+import http from 'node:http';
 import cron from 'node-cron';
 import { loadConfig } from './config';
 import { connect, disconnect } from './actual';
@@ -40,6 +41,15 @@ async function main(): Promise<void> {
   });
 
   logger.info(`Scheduler active — next run at ${config.fafo.reconTime} daily`);
+
+  // Health check endpoint for monitoring (e.g. Uptime Kuma)
+  const server = http.createServer((_req, res) => {
+    res.writeHead(200, { 'Content-Type': 'text/plain' });
+    res.end('OK');
+  });
+  server.listen(config.fafo.healthPort, () => {
+    logger.info(`Health check listening on port ${config.fafo.healthPort}`);
+  });
 }
 
 // Graceful shutdown
