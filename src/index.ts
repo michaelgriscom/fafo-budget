@@ -4,6 +4,7 @@ import { loadConfig } from './config';
 import { connect, disconnect, runBankSync } from './actual';
 import { reconcile } from './reconcile';
 import { logger } from './logger';
+import { getSyncState, setSyncSuccess, setSyncError, setSyncDisabled } from './syncStatus';
 
 async function runScheduledJob(): Promise<void> {
   const config = loadConfig();
@@ -11,7 +12,16 @@ async function runScheduledJob(): Promise<void> {
     await connect(config);
 
     if (config.fafo.bankSync) {
-      await runBankSync();
+      try {
+        await runBankSync();
+        setSyncSuccess();
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+        setSyncError(message);
+        throw err;
+      }
+    } else {
+      setSyncDisabled();
     }
 
     await reconcile(config);
@@ -48,8 +58,15 @@ async function main(): Promise<void> {
 
   logger.info(`Scheduler active — next run at ${config.fafo.reconTime} daily`);
 
-  // Health check endpoint for monitoring (e.g. Uptime Kuma)
+  // HTTP endpoints for monitoring (e.g. Uptime Kuma)
   const server = http.createServer((_req, res) => {
+    if (_req.url === '/sync') {
+      const state = getSyncState();
+      const statusCode = state.status === 'error' ? 500 : 200;
+      res.writeHead(statusCode, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify(state));
+      return;
+    }
     res.writeHead(200, { 'Content-Type': 'text/plain' });
     res.end('OK');
   });
