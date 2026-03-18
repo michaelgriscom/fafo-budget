@@ -21,6 +21,12 @@ export async function sync(): Promise<void> {
   await api.sync();
 }
 
+export async function runBankSync(): Promise<void> {
+  logger.info('Running bank sync for all linked accounts');
+  await api.runBankSync();
+  logger.info('Bank sync complete');
+}
+
 export async function disconnect(): Promise<void> {
   try {
     await api.shutdown();

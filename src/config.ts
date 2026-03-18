@@ -12,6 +12,7 @@ export interface Config {
     otherCategory: string | null;
     dryRun: boolean;
     healthPort: number;
+    bankSync: boolean;
   };
 }
 
@@ -68,6 +69,7 @@ export function loadConfig(): Config {
       otherCategory: process.env['FAFO_OTHER_CATEGORY'] || null,
       dryRun: process.env['FAFO_DRY_RUN'] === 'true',
       healthPort: optionalInt('FAFO_HEALTH_PORT', 8080),
+      bankSync: process.env['FAFO_BANK_SYNC'] === 'true',
     },
   };
 }

@@ -34,6 +34,7 @@ Your Actual Budget categories must be organized into four category groups:
 | `FAFO_RECON_TIME` | No | `02:00` | Time of day to run (HH:MM, 24hr) |
 | `TZ` | No | `UTC` | Timezone |
 | `FAFO_OTHER_CATEGORY` | No | *(first in group)* | Name of the catch-all category in the Other group |
+| `FAFO_BANK_SYNC` | No | `false` | Sync linked bank accounts before reconciliation |
 | `FAFO_DRY_RUN` | No | `false` | Log changes without applying them |
 | `FAFO_HEALTH_PORT` | No | `8080` | Port for the health check HTTP endpoint |
 
@@ -66,9 +67,14 @@ fafo_budget:
 
 ## Monitoring
 
-The container exposes an HTTP health check endpoint on port 8080 (configurable via `FAFO_HEALTH_PORT`). Any request returns `200 OK`.
+The container exposes two HTTP endpoints on port 8080 (configurable via `FAFO_HEALTH_PORT`):
 
-The Dockerfile includes a `HEALTHCHECK` instruction, so Docker will automatically report container health. For external monitoring (e.g. Uptime Kuma), point an HTTP monitor at `http://fafo_budget:8080`.
+| Endpoint | Description |
+|---|---|
+| `GET /` | Basic health check — always returns `200 OK` |
+| `GET /sync` | Bank sync status — returns `200` with JSON state on success, `500` on sync error. Possible states: `pending`, `success`, `error`, `disabled` |
+
+The Dockerfile includes a `HEALTHCHECK` instruction, so Docker will automatically report container health. For external monitoring (e.g. Uptime Kuma), use `/` for general uptime and `/sync` to alert on bank sync failures.
 
 ## Development
 
