@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.1.0](https://github.com/michaelgriscom/fafo-budget/compare/v1.0.0...v1.1.0) (2026-03-18)
+
+
+### Features
+
+* add optional bank sync before reconciliation ([#7](https://github.com/michaelgriscom/fafo-budget/issues/7)) ([41ccbfb](https://github.com/michaelgriscom/fafo-budget/commit/41ccbfb5c306e2f4c6a302a15ba52048e147939e))
+
 ## 1.0.0 (2026-02-28)
 
 
