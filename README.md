@@ -37,6 +37,10 @@ Your Actual Budget categories must be organized into four category groups:
 | `FAFO_BANK_SYNC` | No | `false` | Sync linked bank accounts before reconciliation |
 | `FAFO_DRY_RUN` | No | `false` | Log changes without applying them |
 | `FAFO_HEALTH_PORT` | No | `8080` | Port for the health check HTTP endpoint |
+| `FRED_API_KEY` | No | — | FRED API key (enables PCE inflation adjustment) |
+| `BUDGET_START_DATE` | If inflation | — | Month the budget baseline was set (`YYYY-MM-DD`) |
+| `BASE_TARGET` | If inflation | — | Original monthly spending target in dollars (replaces `FAFO_MONTHLY_TARGET`) |
+| `BASE_ALLOWANCE_*` | No | — | Base allowance per household member (e.g. `BASE_ALLOWANCE_ALICE=200`) |
 
 ## How the reconciliation window works
 
@@ -45,6 +49,26 @@ With default settings (`start=28`, `end=5`):
 - **Jan 28–Feb 5**: Corrects January's Flex budgets to match actual spending and updates Other per the aforementioned calculation. Copies the budget values over to February. The runs in February are intended to catch end-of-month transactions that take additional days to clear.
 - **Feb 6–27**: No reconciliation (outside window)
 - **Feb 28–Mar 5**: Same process for February → March
+
+## PCE inflation adjustment
+
+When `FRED_API_KEY` is set, the reconciler fetches the [PCE Price Index](https://fred.stlouisfed.org/series/PCEPI) from the FRED API and adjusts the monthly spending target and allowance budgets for cumulative inflation since `BUDGET_START_DATE`.
+
+The formula is:
+
+```
+cumulative_change = (latest_pcepi / start_pcepi) - 1
+effective_target  = BASE_TARGET     * (1 + cumulative_change)
+effective_allow.  = BASE_ALLOWANCE  * (1 + cumulative_change)
+```
+
+This is stateless — no local file is persisted. The full history lives in FRED and is recomputed each run from the base values and start date.
+
+- **API downtime**: The adjustment is skipped and base values are used. A warning is logged.
+- **Deflation** (negative cumulative change): Valid — the adjustment is applied as-is.
+- **No exact start-date observation**: The nearest prior month's PCEPI is used automatically.
+
+When inflation is enabled, `BASE_TARGET` replaces `FAFO_MONTHLY_TARGET` as the spending target. Categories in the Allowances group are matched to `BASE_ALLOWANCE_*` env vars by uppercasing the category name and replacing spaces with underscores (e.g. category "Alice" matches `BASE_ALLOWANCE_ALICE`). Allowance categories without a matching env var are copied from the source month as before.
 
 ## Docker Compose
 

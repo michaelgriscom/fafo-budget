@@ -1,5 +1,6 @@
 import { api } from './actual';
 import { Config } from './config';
+import { fetchInflation } from './inflation';
 import { logger } from './logger';
 
 // The @actual-app/api types for getBudgetMonth.categoryGroups are Record<string, unknown>[].
@@ -131,6 +132,39 @@ export async function reconcile(config: Config): Promise<void> {
     dryRun: config.fafo.dryRun,
   });
 
+  // Inflation adjustment — compute factor before touching any budgets
+  let inflationFactor = 1;
+
+  if (config.fafo.inflation) {
+    const result = await fetchInflation(
+      config.fafo.inflation.fredApiKey,
+      config.fafo.inflation.budgetStartDate,
+    );
+
+    if (result) {
+      inflationFactor = 1 + result.cumulativeChange;
+
+      logger.info('PCE inflation adjustment', {
+        startPcepi: result.startPcepi,
+        latestPcepi: result.latestPcepi,
+        cumulativeChange: `${(result.cumulativeChange * 100).toFixed(2)}%`,
+        baseTarget: config.fafo.inflation.baseTarget,
+        effectiveTarget: Math.round(config.fafo.inflation.baseTarget * inflationFactor * 100) / 100,
+      });
+
+      for (const [name, base] of Object.entries(config.fafo.inflation.baseAllowances)) {
+        logger.info(`Inflation-adjusted allowance: ${name}`, {
+          base,
+          effective: Math.round(base * inflationFactor * 100) / 100,
+        });
+      }
+    } else {
+      logger.warn('Using base values without inflation adjustment');
+    }
+  }
+
+  const effectiveTarget = config.fafo.monthlyTarget * inflationFactor;
+
   // Sync to get latest data
   await api.sync();
 
@@ -157,7 +191,7 @@ export async function reconcile(config: Config): Promise<void> {
     }
   }
 
-  const targetMonthlyAmount = Math.round(config.fafo.monthlyTarget * 100); // Actual uses integer cents
+  const targetMonthlyAmount = Math.round(effectiveTarget * 100); // Actual uses integer cents
 
   // Step 1: Copy Fixed budgets from source month to target month
   const sourceFixedGroup = findGroup(sourceGroups, 'Fixed')!;
@@ -179,7 +213,9 @@ export async function reconcile(config: Config): Promise<void> {
     }
   }
 
-  // Step 2: Copy Allowance budgets from source month to target month
+  // Step 2: Set Allowance budgets in target month.
+  // When inflation is configured and a BASE_ALLOWANCE_* matches the category
+  // name, use the inflation-adjusted amount. Otherwise copy from source month.
   const sourceAllowancesGroup = findGroup(sourceGroups, 'Allowances')!;
   const targetAllowancesGroup = findGroup(targetGroups, 'Allowances')!;
   let allowancesTotal = 0;
@@ -188,7 +224,20 @@ export async function reconcile(config: Config): Promise<void> {
     const targetCat = targetAllowancesGroup.categories.find((c) => c.id === sourceCat.id);
     if (!targetCat) continue;
 
-    const newBudget = sourceCat.budgeted;
+    let newBudget: number;
+
+    if (config.fafo.inflation) {
+      const catKey = sourceCat.name.toUpperCase().replace(/\s+/g, '_');
+      const baseAmount = config.fafo.inflation.baseAllowances[catKey];
+      if (baseAmount !== undefined) {
+        newBudget = Math.round(baseAmount * inflationFactor * 100);
+      } else {
+        newBudget = sourceCat.budgeted;
+      }
+    } else {
+      newBudget = sourceCat.budgeted;
+    }
+
     allowancesTotal += newBudget;
 
     if (targetCat.budgeted !== newBudget) {
@@ -299,5 +348,6 @@ export async function reconcile(config: Config): Promise<void> {
     allowances: allowancesTotal / 100,
     other: otherBudget / 100,
     dryRun: config.fafo.dryRun,
+    ...(config.fafo.inflation ? { inflationAdjusted: inflationFactor !== 1 } : {}),
   });
 }

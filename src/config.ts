@@ -1,3 +1,10 @@
+export interface InflationConfig {
+  fredApiKey: string;
+  budgetStartDate: string;
+  baseTarget: number;
+  baseAllowances: Record<string, number>; // ENV suffix (e.g. "ALICE") → dollars
+}
+
 export interface Config {
   actual: {
     serverUrl: string;
@@ -13,6 +20,7 @@ export interface Config {
     dryRun: boolean;
     healthPort: number;
     bankSync: boolean;
+    inflation: InflationConfig | null;
   };
 }
 
@@ -49,10 +57,48 @@ export function loadConfig(): Config {
     throw new Error(`FAFO_RECON_TIME must be HH:MM format, got ${reconTime}`);
   }
 
-  const targetStr = required('FAFO_MONTHLY_TARGET');
-  const monthlyTarget = parseFloat(targetStr);
-  if (isNaN(monthlyTarget) || monthlyTarget <= 0) {
-    throw new Error(`FAFO_MONTHLY_TARGET must be a positive number, got ${targetStr}`);
+  // Inflation adjustment (optional — enabled when FRED_API_KEY is set)
+  const fredApiKey = process.env['FRED_API_KEY'];
+  let inflation: InflationConfig | null = null;
+
+  if (fredApiKey) {
+    const budgetStartDate = required('BUDGET_START_DATE');
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(budgetStartDate)) {
+      throw new Error(`BUDGET_START_DATE must be YYYY-MM-DD format, got ${budgetStartDate}`);
+    }
+
+    const baseTargetStr = required('BASE_TARGET');
+    const baseTarget = parseFloat(baseTargetStr);
+    if (isNaN(baseTarget) || baseTarget <= 0) {
+      throw new Error(`BASE_TARGET must be a positive number, got ${baseTargetStr}`);
+    }
+
+    const baseAllowances: Record<string, number> = {};
+    for (const key of Object.keys(process.env)) {
+      if (key.startsWith('BASE_ALLOWANCE_')) {
+        const value = process.env[key]!;
+        const name = key.slice('BASE_ALLOWANCE_'.length);
+        const amount = parseFloat(value);
+        if (isNaN(amount) || amount <= 0) {
+          throw new Error(`${key} must be a positive number, got ${value}`);
+        }
+        baseAllowances[name] = amount;
+      }
+    }
+
+    inflation = { fredApiKey, budgetStartDate, baseTarget, baseAllowances };
+  }
+
+  // Monthly target: BASE_TARGET when inflation is configured, FAFO_MONTHLY_TARGET otherwise
+  let monthlyTarget: number;
+  if (inflation) {
+    monthlyTarget = inflation.baseTarget;
+  } else {
+    const targetStr = required('FAFO_MONTHLY_TARGET');
+    monthlyTarget = parseFloat(targetStr);
+    if (isNaN(monthlyTarget) || monthlyTarget <= 0) {
+      throw new Error(`FAFO_MONTHLY_TARGET must be a positive number, got ${targetStr}`);
+    }
   }
 
   return {
@@ -70,6 +116,7 @@ export function loadConfig(): Config {
       dryRun: process.env['FAFO_DRY_RUN'] === 'true',
       healthPort: optionalInt('FAFO_HEALTH_PORT', 8080),
       bankSync: process.env['FAFO_BANK_SYNC'] === 'true',
+      inflation,
     },
   };
 }
