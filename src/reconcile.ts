@@ -163,37 +163,41 @@ export async function reconcile(config: Config): Promise<void> {
   let effectiveAllowances: Record<string, number> | null = null; // lowercase name -> cents
 
   if (config.fafo.inflation) {
-    const { fredApiKey, budgetStartDate, baseTarget, baseAllowances } = config.fafo.inflation;
+    const { fredApiKey, budgetStartDate, baseAllowances } = config.fafo.inflation;
+    const hasBaseAllowances = Object.keys(baseAllowances).length > 0;
     const adjustment = await getInflationAdjustment(fredApiKey, budgetStartDate);
 
     if (adjustment) {
       const multiplier = 1 + adjustment.cumulativeChange;
-      effectiveTarget = baseTarget * multiplier;
+      effectiveTarget = config.fafo.monthlyTarget * multiplier;
 
       logger.info('PCE inflation adjustment applied', {
         startPcepi: adjustment.startPcepi,
         latestPcepi: adjustment.latestPcepi,
         cumulativeChangePct: `${(adjustment.cumulativeChange * 100).toFixed(2)}%`,
-        baseTarget,
+        baseTarget: config.fafo.monthlyTarget,
         effectiveTarget: Math.round(effectiveTarget * 100) / 100,
       });
 
-      effectiveAllowances = {};
-      for (const [name, base] of Object.entries(baseAllowances)) {
-        const adjusted = Math.round(base * multiplier * 100); // cents
-        effectiveAllowances[name] = adjusted;
-        logger.info(`Allowance inflation adjustment: "${name}"`, {
-          base,
-          effective: adjusted / 100,
-        });
+      if (hasBaseAllowances) {
+        effectiveAllowances = {};
+        for (const [name, base] of Object.entries(baseAllowances)) {
+          const adjusted = Math.round(base * multiplier * 100); // cents
+          effectiveAllowances[name] = adjusted;
+          logger.info(`Allowance inflation adjustment: "${name}"`, {
+            base,
+            effective: adjusted / 100,
+          });
+        }
       }
     } else {
       // API failure — use base values without adjustment
       logger.warn('Using base values without inflation adjustment');
-      effectiveTarget = baseTarget;
-      effectiveAllowances = {};
-      for (const [name, base] of Object.entries(baseAllowances)) {
-        effectiveAllowances[name] = Math.round(base * 100);
+      if (hasBaseAllowances) {
+        effectiveAllowances = {};
+        for (const [name, base] of Object.entries(baseAllowances)) {
+          effectiveAllowances[name] = Math.round(base * 100);
+        }
       }
     }
   }
@@ -342,7 +346,7 @@ export async function reconcile(config: Config): Promise<void> {
   logger.info('Reconciliation complete', {
     targetMonth: window.targetMonth,
     target: targetMonthlyAmount / 100,
-    ...(config.fafo.inflation ? { baseTarget: config.fafo.inflation.baseTarget } : {}),
+    ...(config.fafo.inflation ? { baseTarget: config.fafo.monthlyTarget } : {}),
     fixed: fixedTotal / 100,
     flex: flexTotal / 100,
     allowances: allowancesTotal / 100,

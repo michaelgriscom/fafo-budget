@@ -1,8 +1,7 @@
 export interface InflationConfig {
   fredApiKey: string;
   budgetStartDate: string; // YYYY-MM-DD
-  baseTarget: number; // dollars
-  baseAllowances: Record<string, number>; // lowercase category name -> dollars
+  baseAllowances: Record<string, number>; // lowercase category name -> dollars (may be empty)
 }
 
 export interface Config {
@@ -57,6 +56,12 @@ export function loadConfig(): Config {
     throw new Error(`FAFO_RECON_TIME must be HH:MM format, got ${reconTime}`);
   }
 
+  const targetStr = required('FAFO_MONTHLY_TARGET');
+  const monthlyTarget = parseFloat(targetStr);
+  if (isNaN(monthlyTarget) || monthlyTarget <= 0) {
+    throw new Error(`FAFO_MONTHLY_TARGET must be a positive number, got ${targetStr}`);
+  }
+
   // Parse optional inflation config
   let inflation: InflationConfig | null = null;
   const fredApiKey = process.env['FRED_API_KEY'];
@@ -64,12 +69,6 @@ export function loadConfig(): Config {
     const budgetStartDate = required('BUDGET_START_DATE');
     if (!/^\d{4}-\d{2}-\d{2}$/.test(budgetStartDate)) {
       throw new Error(`BUDGET_START_DATE must be YYYY-MM-DD format, got ${budgetStartDate}`);
-    }
-
-    const baseTargetStr = required('BASE_TARGET');
-    const baseTarget = parseFloat(baseTargetStr);
-    if (isNaN(baseTarget) || baseTarget <= 0) {
-      throw new Error(`BASE_TARGET must be a positive number, got ${baseTargetStr}`);
     }
 
     const baseAllowances: Record<string, number> = {};
@@ -84,19 +83,7 @@ export function loadConfig(): Config {
       }
     }
 
-    inflation = { fredApiKey, budgetStartDate, baseTarget, baseAllowances };
-  }
-
-  // FAFO_MONTHLY_TARGET is optional when BASE_TARGET is provided via inflation config
-  let monthlyTarget: number;
-  if (inflation) {
-    monthlyTarget = inflation.baseTarget;
-  } else {
-    const targetStr = required('FAFO_MONTHLY_TARGET');
-    monthlyTarget = parseFloat(targetStr);
-    if (isNaN(monthlyTarget) || monthlyTarget <= 0) {
-      throw new Error(`FAFO_MONTHLY_TARGET must be a positive number, got ${targetStr}`);
-    }
+    inflation = { fredApiKey, budgetStartDate, baseAllowances };
   }
 
   return {
