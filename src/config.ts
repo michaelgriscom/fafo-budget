@@ -1,3 +1,10 @@
+export interface InflationConfig {
+  fredApiKey: string;
+  budgetStartDate: string; // YYYY-MM-DD
+  baseTarget: number; // dollars
+  baseAllowances: Record<string, number>; // lowercase category name -> dollars
+}
+
 export interface Config {
   actual: {
     serverUrl: string;
@@ -13,6 +20,7 @@ export interface Config {
     dryRun: boolean;
     healthPort: number;
     bankSync: boolean;
+    inflation: InflationConfig | null;
   };
 }
 
@@ -49,10 +57,46 @@ export function loadConfig(): Config {
     throw new Error(`FAFO_RECON_TIME must be HH:MM format, got ${reconTime}`);
   }
 
-  const targetStr = required('FAFO_MONTHLY_TARGET');
-  const monthlyTarget = parseFloat(targetStr);
-  if (isNaN(monthlyTarget) || monthlyTarget <= 0) {
-    throw new Error(`FAFO_MONTHLY_TARGET must be a positive number, got ${targetStr}`);
+  // Parse optional inflation config
+  let inflation: InflationConfig | null = null;
+  const fredApiKey = process.env['FRED_API_KEY'];
+  if (fredApiKey) {
+    const budgetStartDate = required('BUDGET_START_DATE');
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(budgetStartDate)) {
+      throw new Error(`BUDGET_START_DATE must be YYYY-MM-DD format, got ${budgetStartDate}`);
+    }
+
+    const baseTargetStr = required('BASE_TARGET');
+    const baseTarget = parseFloat(baseTargetStr);
+    if (isNaN(baseTarget) || baseTarget <= 0) {
+      throw new Error(`BASE_TARGET must be a positive number, got ${baseTargetStr}`);
+    }
+
+    const baseAllowances: Record<string, number> = {};
+    for (const [key, value] of Object.entries(process.env)) {
+      if (key.startsWith('BASE_ALLOWANCE_') && value) {
+        const name = key.slice('BASE_ALLOWANCE_'.length).toLowerCase();
+        const amount = parseFloat(value);
+        if (isNaN(amount) || amount <= 0) {
+          throw new Error(`${key} must be a positive number, got ${value}`);
+        }
+        baseAllowances[name] = amount;
+      }
+    }
+
+    inflation = { fredApiKey, budgetStartDate, baseTarget, baseAllowances };
+  }
+
+  // FAFO_MONTHLY_TARGET is optional when BASE_TARGET is provided via inflation config
+  let monthlyTarget: number;
+  if (inflation) {
+    monthlyTarget = inflation.baseTarget;
+  } else {
+    const targetStr = required('FAFO_MONTHLY_TARGET');
+    monthlyTarget = parseFloat(targetStr);
+    if (isNaN(monthlyTarget) || monthlyTarget <= 0) {
+      throw new Error(`FAFO_MONTHLY_TARGET must be a positive number, got ${targetStr}`);
+    }
   }
 
   return {
@@ -70,6 +114,7 @@ export function loadConfig(): Config {
       dryRun: process.env['FAFO_DRY_RUN'] === 'true',
       healthPort: optionalInt('FAFO_HEALTH_PORT', 8080),
       bankSync: process.env['FAFO_BANK_SYNC'] === 'true',
+      inflation,
     },
   };
 }
