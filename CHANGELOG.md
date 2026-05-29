@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.2.0](https://github.com/michaelgriscom/fafo-budget/compare/v1.1.0...v1.2.0) (2026-05-29)
+
+
+### Features
+
+* add optional PCE inflation adjustment for monthly target and allowances ([#10](https://github.com/michaelgriscom/fafo-budget/issues/10)) ([b8ea509](https://github.com/michaelgriscom/fafo-budget/commit/b8ea509ba73601b102381e5c5e4aa5c3b72f2d49))
+
 ## [1.1.0](https://github.com/michaelgriscom/fafo-budget/compare/v1.0.0...v1.1.0) (2026-03-18)
 
 
