@@ -50,23 +50,27 @@ function extract(text: string, re: RegExp): string | null {
  * debit-card receipt or a required field is missing — callers skip those silently.
  */
 export function parsePaypalEmail(subject: string, text: string): ParsedPaypalTxn | null {
-  const haystack = `${subject}\n${text}`;
+  // Plain-text renderings (especially forwarded mail) wrap labels/values in
+  // markdown emphasis (*...*) and can break a label across a newline (e.g.
+  // "Transaction\ndate"). Strip the asterisks and use \s+ inside labels so the
+  // forwarded and direct formats both parse.
+  const clean = text.replace(/\*/g, '');
   // Only act on PayPal Debit Card receipts; ignore anything else (statements, promos, etc.).
-  if (!/PayPal Debit (Card|Mastercard)/i.test(haystack)) {
+  if (!/PayPal Debit (Card|Mastercard)/i.test(`${subject}\n${clean}`)) {
     return null;
   }
 
-  const transactionId = extract(text, /Transaction ID[\s:]*([A-Z0-9]{10,})/i);
-  const merchant = extract(text, /Merchant:?[ \t]*([^\n\r]+)/i);
+  const transactionId = extract(clean, /Transaction\s+ID[\s:]*([A-Z0-9]{10,})/i);
+  const merchant = extract(clean, /Merchant:?[ \t]*([^\n\r]+)/i);
   // Prefer the "Final transaction amount"; fall back to "Total amount".
   const amountStr =
-    extract(text, /Final transaction amount[\s:]*\$?\s*([\d,]+\.\d{2})/i) ??
-    extract(text, /Total amount[\s:]*\$?\s*([\d,]+\.\d{2})/i);
+    extract(clean, /Final transaction amount[\s:]*\$?\s*([\d,]+\.\d{2})/i) ??
+    extract(clean, /Total amount[\s:]*\$?\s*([\d,]+\.\d{2})/i);
   // Prefer the explicit "Transaction date"; fall back to the date in the summary line.
   const dateRaw =
-    extract(text, /Transaction date[\s:]*([A-Za-z]+\s+\d{1,2},?\s+\d{4})/i) ??
-    extract(text, /\bon\s+([A-Za-z]+\s+\d{1,2},?\s+\d{4})/i);
-  const type = extract(text, /Transaction type:?[ \t]*([^\n\r]+)/i) ?? 'Purchase';
+    extract(clean, /Transaction\s+date[\s:]*([A-Za-z]+\s+\d{1,2},?\s+\d{4})/i) ??
+    extract(clean, /\bon\s+([A-Za-z]+\s+\d{1,2},?\s+\d{4})/i);
+  const type = extract(clean, /Transaction\s+type:?[ \t]*([^\n\r]+)/i) ?? 'Purchase';
 
   if (!transactionId || !merchant || !amountStr || !dateRaw) {
     return null;

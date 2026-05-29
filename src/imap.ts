@@ -37,9 +37,16 @@ export async function processPaypalInbox(
   try {
     const candidates: { uid: number; txn: ParsedPaypalTxn }[] = [];
 
-    for await (const msg of client.fetch({ seen: false }, { uid: true, source: true })) {
+    // Server-side filter: only fetch unread messages whose subject matches, so we
+    // don't pull the whole mailbox. The subject survives manual forwarding (it
+    // just gains a "Fwd:" prefix), unlike the From header which gets rewritten.
+    const query: Record<string, unknown> = { seen: false };
+    if (cfg.subjectFilter) query.subject = cfg.subjectFilter;
+
+    for await (const msg of client.fetch(query, { uid: true, source: true })) {
       const parsed = await simpleParser(msg.source as Buffer);
       const from = parsed.from?.text ?? '';
+      // Optional extra From check (off by default; forwarded mail rewrites From).
       if (cfg.fromFilter && !from.toLowerCase().includes(cfg.fromFilter.toLowerCase())) {
         continue;
       }

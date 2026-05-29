@@ -12,7 +12,8 @@ export interface PaypalConfig {
   imapUser: string;
   imapPassword: string;
   mailbox: string;
-  fromFilter: string; // substring match on the From header (defense-in-depth)
+  subjectFilter: string; // server-side IMAP subject search (primary filter)
+  fromFilter: string; // optional substring match on the From header (default off)
   actualAccount: string; // exact Actual account name to import into
   pollCron: string;
 }
@@ -118,7 +119,8 @@ export function loadConfig(): Config {
       imapUser: required('IMAP_USER'),
       imapPassword: required('IMAP_PASSWORD'),
       mailbox: optional('IMAP_MAILBOX', 'INBOX'),
-      fromFilter: optional('PAYPAL_FROM', 'paypal.com'),
+      subjectFilter: optional('PAYPAL_SUBJECT', 'PayPal Debit Card'),
+      fromFilter: optional('PAYPAL_FROM', ''),
       actualAccount: optional('PAYPAL_ACTUAL_ACCOUNT', 'M Paypal'),
       pollCron,
     };

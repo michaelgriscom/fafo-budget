@@ -51,6 +51,38 @@ test('falls back to the summary-line date when no explicit Transaction date', ()
   assert.equal(txn.date, '2026-05-28'); // from "...on May 28, 2026."
 });
 
+// Real Gmail plain-text rendering of a *manually forwarded* receipt: markdown
+// emphasis asterisks around labels/values, and the "Transaction date" label
+// broken across a newline.
+const FORWARDED_BODY = `---------- Forwarded message ---------
+From: service@paypal.com <service@paypal.com>
+Subject: Receipt for your PayPal Debit Card purchase
+
+Here's your receipt for your PayPal Debit Card purchase
+You used your PayPal Debit Mastercard at MEIJER STORE #104 on May 28, 2026.
+Payment Details
+*Transaction ID*
+0N312199M6088954U
+<https://www.paypal.com/myaccount/transaction/details/0N312199M6088954U?v=1>
+*Transaction
+date*
+May 28, 2026
+Transaction type: Purchase
+Merchant: MEIJER STORE #104
+Final transaction amount $56.61 USD
+Total amount $56.61 USD
+Available PayPal balance $286.53 USD`;
+
+test('parses a forwarded receipt (asterisks + newline-split label)', () => {
+  const txn = parsePaypalEmail('Fwd: Receipt for your PayPal Debit Card purchase', FORWARDED_BODY);
+  assert.ok(txn, 'expected a parsed transaction');
+  assert.equal(txn.transactionId, '0N312199M6088954U');
+  assert.equal(txn.merchant, 'MEIJER STORE #104');
+  assert.equal(txn.date, '2026-05-28');
+  assert.equal(txn.amount, -56.61);
+  assert.equal(txn.type, 'Purchase');
+});
+
 test('returns null for a non-PayPal-debit email', () => {
   assert.equal(parsePaypalEmail('Your Amazon order shipped', 'Tracking number 12345'), null);
 });
