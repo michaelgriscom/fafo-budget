@@ -65,28 +65,26 @@ If the FRED API is unavailable, the reconciler logs a warning and uses unadjuste
 ## PayPal Debit Card import
 
 PayPal debit card purchases don't appear in Actual via bank sync (SimpleFin doesn't
-support PayPal), but PayPal emails a receipt for every purchase. When
-`PAYPAL_IMPORT_ENABLED=true`, this container polls an IMAP mailbox, parses those
-receipts, and imports them into an Actual account using `imported_id` dedup (the
-PayPal transaction ID) so re-polling never creates duplicates. Your existing Actual
-payee/category rules run automatically on import.
-
-**Recommended setup — a dedicated forwarding inbox.** IMAP credentials grant access
-to the whole mailbox, so point this at an inbox that contains *only* PayPal receipts:
-create a throwaway email account and add a filter in your real inbox that forwards
-PayPal Debit Card receipts to it. The poller then never touches your primary mail.
+support PayPal), but PayPal can email a notification for every transaction (enable
+transaction notifications in your PayPal account settings). When
+`PAYPAL_IMPORT_ENABLED=true`, this container polls an IMAP mailbox for those emails
+(matched by subject, so forwarded copies work too), parses them, and imports them
+into an Actual account using `imported_id` dedup (the PayPal transaction ID) so
+re-polling never creates duplicates. Your existing Actual payee/category rules run
+automatically on import.
 
 | Variable | Required | Default | Description |
 |---|---|---|---|
 | `PAYPAL_IMPORT_ENABLED` | No | `false` | Enables PayPal email import |
 | `IMAP_HOST` | No | `imap.gmail.com` | IMAP server host |
 | `IMAP_PORT` | No | `993` | IMAP server port (TLS) |
-| `IMAP_USER` | When enabled | — | IMAP username (the dedicated inbox) |
+| `IMAP_USER` | When enabled | — | IMAP username |
 | `IMAP_PASSWORD` | When enabled | — | IMAP password / app password |
 | `IMAP_MAILBOX` | No | `INBOX` | Mailbox/folder to poll |
-| `PAYPAL_FROM` | No | `paypal.com` | Substring the sender must contain (defense-in-depth) |
-| `PAYPAL_ACTUAL_ACCOUNT` | No | `M Paypal` | Exact name of the Actual account to import into |
-| `PAYPAL_POLL_CRON` | No | `*/10 * * * *` | Cron schedule for polling |
+| `PAYPAL_SUBJECT` | No | `PayPal Debit Card` | Subject substring matched by the server-side IMAP search |
+| `PAYPAL_FROM` | No | _(unset)_ | Optional sender substring filter, for extra security |
+| `PAYPAL_ACTUAL_ACCOUNT` | No | `PayPal` | Exact name of the Actual account to import into |
+| `PAYPAL_POLL_CRON` | No | `0 */6 * * *` | Cron schedule for polling |
 
 **Prerequisite:** create an account in Actual whose name exactly matches
 `PAYPAL_ACTUAL_ACCOUNT`. Only "Purchase"-type receipts import as outflows; refunds
@@ -122,7 +120,7 @@ The container exposes two HTTP endpoints on port 8080 (configurable via `FAFO_HE
 | `GET /sync` | Bank sync status — returns `200` with JSON state on success, `500` on sync error. Possible states: `pending`, `success`, `error`, `disabled` |
 | `GET /paypal` | PayPal import status — returns `200` with JSON state (`success` includes the last `imported` count), `500` on poll error. Possible states: `pending`, `success`, `error`, `disabled` |
 
-The Dockerfile includes a `HEALTHCHECK` instruction, so Docker will automatically report container health. For external monitoring (e.g. Uptime Kuma), use `/` for general uptime, `/sync` to alert on bank sync failures, and `/paypal` to alert on PayPal import failures.
+The Dockerfile includes a `HEALTHCHECK` instruction, so Docker reports container health automatically. The endpoints above can be wired into external monitoring (e.g. Uptime Kuma).
 
 ## Development
 

@@ -109,7 +109,7 @@ export function loadConfig(): Config {
   // Parse optional PayPal email import config
   let paypal: PaypalConfig | null = null;
   if (process.env['PAYPAL_IMPORT_ENABLED'] === 'true') {
-    const pollCron = optional('PAYPAL_POLL_CRON', '*/10 * * * *');
+    const pollCron = optional('PAYPAL_POLL_CRON', '0 */6 * * *');
     if (!cron.validate(pollCron)) {
       throw new Error(`PAYPAL_POLL_CRON must be a valid cron expression, got ${pollCron}`);
     }
@@ -121,7 +121,7 @@ export function loadConfig(): Config {
       mailbox: optional('IMAP_MAILBOX', 'INBOX'),
       subjectFilter: optional('PAYPAL_SUBJECT', 'PayPal Debit Card'),
       fromFilter: optional('PAYPAL_FROM', ''),
-      actualAccount: optional('PAYPAL_ACTUAL_ACCOUNT', 'M Paypal'),
+      actualAccount: optional('PAYPAL_ACTUAL_ACCOUNT', 'PayPal'),
       pollCron,
     };
   }
