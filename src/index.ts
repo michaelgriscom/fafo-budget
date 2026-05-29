@@ -46,6 +46,12 @@ async function main(): Promise<void> {
     dryRun: config.fafo.dryRun,
     monthlyTarget: config.fafo.monthlyTarget,
     bankSync: config.fafo.bankSync,
+    inflation: config.fafo.inflation
+      ? {
+          budgetStartDate: config.fafo.inflation.budgetStartDate,
+          baseAllowances: config.fafo.inflation.baseAllowances,
+        }
+      : false,
   });
 
   // Run once on startup
