@@ -46,6 +46,22 @@ With default settings (`start=28`, `end=5`):
 - **Feb 6–27**: No reconciliation (outside window)
 - **Feb 28–Mar 5**: Same process for February → March
 
+## Inflation adjustment
+
+Without inflation adjustment, rising prices silently eat into the Other category's budget, creating negative carryover that's indistinguishable from actual overspending. This corrupts the FAFO signal.
+
+When `FRED_API_KEY` and `BUDGET_START_DATE` are set, the reconciler automatically adjusts `FAFO_MONTHLY_TARGET` (and optionally allowance budgets) for cumulative inflation since the budget start date using the [PCE Price Index](https://fred.stlouisfed.org/series/PCEPI) from the Federal Reserve (FRED).
+
+PCE is used instead of CPI because it accounts for substitution effects — when one good gets expensive, consumers shift spending to alternatives. CPI assumes a fixed basket, which tends to overstate inflation as experienced by households. This makes PCE a better fit for adjusting a real spending budget.
+
+| Variable | Required | Default | Description |
+|---|---|---|---|
+| `FRED_API_KEY` | No | — | Enables inflation adjustment ([request one here](https://fred.stlouisfed.org/docs/api/api_key.html)) |
+| `BUDGET_START_DATE` | When `FRED_API_KEY` set | — | Month the baseline was set (YYYY-MM-DD) |
+| `BASE_ALLOWANCE_*` | No | — | Base allowance per member (e.g. `BASE_ALLOWANCE_ALICE=200`) |
+
+If the FRED API is unavailable, the reconciler logs a warning and uses unadjusted base values.
+
 ## Docker Compose
 
 ```yaml

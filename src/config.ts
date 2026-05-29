@@ -1,3 +1,9 @@
+export interface InflationConfig {
+  fredApiKey: string;
+  budgetStartDate: string; // YYYY-MM-DD
+  baseAllowances: Record<string, number>; // lowercase category name -> dollars (may be empty)
+}
+
 export interface Config {
   actual: {
     serverUrl: string;
@@ -13,6 +19,7 @@ export interface Config {
     dryRun: boolean;
     healthPort: number;
     bankSync: boolean;
+    inflation: InflationConfig | null;
   };
 }
 
@@ -55,6 +62,30 @@ export function loadConfig(): Config {
     throw new Error(`FAFO_MONTHLY_TARGET must be a positive number, got ${targetStr}`);
   }
 
+  // Parse optional inflation config
+  let inflation: InflationConfig | null = null;
+  const fredApiKey = process.env['FRED_API_KEY'];
+  if (fredApiKey) {
+    const budgetStartDate = required('BUDGET_START_DATE');
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(budgetStartDate)) {
+      throw new Error(`BUDGET_START_DATE must be YYYY-MM-DD format, got ${budgetStartDate}`);
+    }
+
+    const baseAllowances: Record<string, number> = {};
+    for (const [key, value] of Object.entries(process.env)) {
+      if (key.startsWith('BASE_ALLOWANCE_') && value) {
+        const name = key.slice('BASE_ALLOWANCE_'.length).toLowerCase();
+        const amount = parseFloat(value);
+        if (isNaN(amount) || amount <= 0) {
+          throw new Error(`${key} must be a positive number, got ${value}`);
+        }
+        baseAllowances[name] = amount;
+      }
+    }
+
+    inflation = { fredApiKey, budgetStartDate, baseAllowances };
+  }
+
   return {
     actual: {
       serverUrl: required('ACTUAL_SERVER_URL'),
@@ -70,6 +101,7 @@ export function loadConfig(): Config {
       dryRun: process.env['FAFO_DRY_RUN'] === 'true',
       healthPort: optionalInt('FAFO_HEALTH_PORT', 8080),
       bankSync: process.env['FAFO_BANK_SYNC'] === 'true',
+      inflation,
     },
   };
 }
