@@ -6,7 +6,8 @@
   "scripts": {
     "build": "tsc",
     "start": "node dist/index.js",
-    "dev": "tsx src/index.ts"
+    "dev": "tsx src/index.ts",
+    "test": "node --import tsx --test src/*.test.ts"
   },
   "keywords": [
     "actual-budget",
@@ -16,12 +17,16 @@
   ],
   "license": "MIT",
   "dependencies": {
-    "@actual-app/api": "^26.2.0",
+    "@actual-app/api": "26.5.2",
+    "imapflow": "^1.0.171",
+    "mailparser": "^3.7.1",
     "node-cron": "^3.0.3"
   },
   "devDependencies": {
+    "@types/mailparser": "^3.4.4",
     "@types/node": "^22.0.0",
     "@types/node-cron": "^3.0.11",
+    "tsx": "^4.19.2",
     "typescript": "^5.7.0"
   }
 }

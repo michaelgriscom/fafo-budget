@@ -1,7 +1,21 @@
+import cron from 'node-cron';
+
 export interface InflationConfig {
   fredApiKey: string;
   budgetStartDate: string; // YYYY-MM-DD
   baseAllowances: Record<string, number>; // lowercase category name -> dollars (may be empty)
+}
+
+export interface PaypalConfig {
+  imapHost: string;
+  imapPort: number;
+  imapUser: string;
+  imapPassword: string;
+  mailbox: string;
+  subjectFilter: string; // server-side IMAP subject search (primary filter)
+  fromFilter: string; // optional substring match on the From header (default off)
+  actualAccount: string; // exact Actual account name to import into
+  pollCron: string;
 }
 
 export interface Config {
@@ -21,6 +35,7 @@ export interface Config {
     bankSync: boolean;
     inflation: InflationConfig | null;
   };
+  paypal: PaypalConfig | null;
 }
 
 function required(name: string): string {
@@ -29,6 +44,11 @@ function required(name: string): string {
     throw new Error(`Missing required environment variable: ${name}`);
   }
   return value;
+}
+
+function optional(name: string, fallback: string): string {
+  const value = process.env[name];
+  return value && value.trim() !== '' ? value : fallback;
 }
 
 function optionalInt(name: string, fallback: number): number {
@@ -86,6 +106,26 @@ export function loadConfig(): Config {
     inflation = { fredApiKey, budgetStartDate, baseAllowances };
   }
 
+  // Parse optional PayPal email import config
+  let paypal: PaypalConfig | null = null;
+  if (process.env['PAYPAL_IMPORT_ENABLED'] === 'true') {
+    const pollCron = optional('PAYPAL_POLL_CRON', '0 */6 * * *');
+    if (!cron.validate(pollCron)) {
+      throw new Error(`PAYPAL_POLL_CRON must be a valid cron expression, got ${pollCron}`);
+    }
+    paypal = {
+      imapHost: optional('IMAP_HOST', 'imap.gmail.com'),
+      imapPort: optionalInt('IMAP_PORT', 993),
+      imapUser: required('IMAP_USER'),
+      imapPassword: required('IMAP_PASSWORD'),
+      mailbox: optional('IMAP_MAILBOX', 'INBOX'),
+      subjectFilter: optional('PAYPAL_SUBJECT', 'PayPal Debit Card'),
+      fromFilter: optional('PAYPAL_FROM', ''),
+      actualAccount: optional('PAYPAL_ACTUAL_ACCOUNT', 'PayPal'),
+      pollCron,
+    };
+  }
+
   return {
     actual: {
       serverUrl: required('ACTUAL_SERVER_URL'),
@@ -103,5 +143,6 @@ export function loadConfig(): Config {
       bankSync: process.env['FAFO_BANK_SYNC'] === 'true',
       inflation,
     },
+    paypal,
   };
 }
