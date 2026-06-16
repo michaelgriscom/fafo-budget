@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.2.0](https://github.com/michaelgriscom/fafo-budget/compare/v1.1.0...v1.2.0) (2026-06-16)
+
+
+### Features
+
+* add optional PCE inflation adjustment for monthly target and allowances ([#10](https://github.com/michaelgriscom/fafo-budget/issues/10)) ([b8ea509](https://github.com/michaelgriscom/fafo-budget/commit/b8ea509ba73601b102381e5c5e4aa5c3b72f2d49))
+* import PayPal Debit Card transactions from email receipts ([#13](https://github.com/michaelgriscom/fafo-budget/issues/13)) ([8f0fbcf](https://github.com/michaelgriscom/fafo-budget/commit/8f0fbcf3ed10eb63b964a885a9601b63dd8fbc9d))
+
+
+### Bug Fixes
+
+* prevent crash loop from failed bank sync ([#14](https://github.com/michaelgriscom/fafo-budget/issues/14)) ([a9297df](https://github.com/michaelgriscom/fafo-budget/commit/a9297dfe7aa48f100da4e556729977dd6dec4cf1))
+
 ## [1.1.0](https://github.com/michaelgriscom/fafo-budget/compare/v1.0.0...v1.1.0) (2026-03-18)
 
 
