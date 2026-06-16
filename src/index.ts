@@ -106,9 +106,6 @@ async function main(): Promise<void> {
       : false,
   });
 
-  // Run once on startup
-  await runScheduledJob();
-
   // Schedule daily
   cron.schedule(cronExpr, () => {
     runScheduledJob();
@@ -154,6 +151,21 @@ async function main(): Promise<void> {
     logger.info(`Health check listening on port ${config.fafo.healthPort}`);
   });
 }
+
+// The @actual-app/api client can throw asynchronously from its internal sync
+// (e.g. a failed bank sync) after the awaited call has already rejected. Those
+// escape the try/catch in runScheduledJob, so without these handlers Node would
+// crash the whole process. Log and keep the daemon alive instead.
+process.on('unhandledRejection', (reason) => {
+  const message = reason instanceof Error ? reason.message : String(reason);
+  logger.error('Unhandled promise rejection (ignored, daemon continues)', { error: message });
+});
+
+process.on('uncaughtException', (err) => {
+  logger.error('Uncaught exception (ignored, daemon continues)', {
+    error: err instanceof Error ? err.message : String(err),
+  });
+});
 
 // Graceful shutdown
 process.on('SIGTERM', async () => {
