@@ -17,7 +17,7 @@
   ],
   "license": "MIT",
   "dependencies": {
-    "@actual-app/api": "26.5.2",
+    "@actual-app/api": "26.6.0",
     "imapflow": "^1.0.171",
     "mailparser": "^3.7.1",
     "node-cron": "^3.0.3"
