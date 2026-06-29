@@ -4,7 +4,7 @@ import { loadConfig, Config } from './config';
 import { connect, disconnect, runBankSync, sync, importPaypalTransactions } from './actual';
 import { processPaypalInbox } from './imap';
 import { reconcile } from './reconcile';
-import { logger } from './logger';
+import { logger, errorMessage } from './logger';
 import {
   getSyncState,
   setSyncSuccess,
@@ -37,7 +37,7 @@ async function runScheduledJob(): Promise<void> {
           await runBankSync();
           setSyncSuccess();
         } catch (err) {
-          const message = err instanceof Error ? err.message : String(err);
+          const message = errorMessage(err);
           setSyncError(message);
           throw err;
         }
@@ -47,7 +47,7 @@ async function runScheduledJob(): Promise<void> {
 
       await reconcile(config);
     } catch (err) {
-      const message = err instanceof Error ? err.message : String(err);
+      const message = errorMessage(err);
       logger.error('Scheduled job failed', { error: message });
     } finally {
       await disconnect();
@@ -79,7 +79,7 @@ async function runPaypalPoll(config: Config): Promise<void> {
     }
     setPaypalSuccess(result.imported);
   } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
+    const message = errorMessage(err);
     logger.error('PayPal poll failed', { error: message });
     setPaypalError(message);
   }
@@ -157,13 +157,13 @@ async function main(): Promise<void> {
 // escape the try/catch in runScheduledJob, so without these handlers Node would
 // crash the whole process. Log and keep the daemon alive instead.
 process.on('unhandledRejection', (reason) => {
-  const message = reason instanceof Error ? reason.message : String(reason);
+  const message = errorMessage(reason);
   logger.error('Unhandled promise rejection (ignored, daemon continues)', { error: message });
 });
 
 process.on('uncaughtException', (err) => {
   logger.error('Uncaught exception (ignored, daemon continues)', {
-    error: err instanceof Error ? err.message : String(err),
+    error: errorMessage(err),
   });
 });
 
@@ -181,6 +181,6 @@ process.on('SIGINT', async () => {
 });
 
 main().catch((err) => {
-  logger.error('Fatal error', { error: err instanceof Error ? err.message : String(err) });
+  logger.error('Fatal error', { error: errorMessage(err) });
   process.exit(1);
 });

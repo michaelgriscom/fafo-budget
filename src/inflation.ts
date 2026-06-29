@@ -1,4 +1,4 @@
-import { logger } from './logger';
+import { logger, errorMessage } from './logger';
 
 interface FREDObservation {
   date: string;
@@ -76,7 +76,7 @@ export async function getInflationAdjustment(
 
     return { startPcepi, latestPcepi, cumulativeChange };
   } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
+    const message = errorMessage(err);
     logger.warn('Failed to fetch PCE inflation data, skipping adjustment', {
       error: message,
     });
